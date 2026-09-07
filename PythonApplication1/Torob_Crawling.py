@@ -606,3 +606,5 @@ class TorobScraperApp(ctk.CTk):
 if __name__ == '__main__':
   app = TorobScraperApp()
   app.mainloop()
+
+
