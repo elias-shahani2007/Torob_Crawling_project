@@ -366,3 +366,16 @@ FodyWeavers.xsd
 dist/
 build/
 *.spec
+
+
+# Visual Studio temporary files
+.vs/
+*.user
+*.suo
+
+# Python cache and environments
+__pycache__/
+*.pyc
+venv/
+.venv/
+env/
