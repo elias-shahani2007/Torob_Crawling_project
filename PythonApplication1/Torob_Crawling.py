@@ -216,7 +216,7 @@ class TorobScraperApp(ctk.CTk):
                         self.log("✅ کپچا حل شد! ادامه استخراج...\n")
                         time.sleep(1)
                         break
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
 
     def safe_fetch_json(self, page, url):
@@ -306,7 +306,7 @@ class TorobScraperApp(ctk.CTk):
         self, mode, search_query, start_row, end_row, max_results, is_headless
     ):
         try:
-            now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")  # noqa: DTZ005
 
             if mode == "استخراج از فایل اکسل":
                 input_df = pd.read_excel(self.selected_file_path)
@@ -338,7 +338,9 @@ class TorobScraperApp(ctk.CTk):
             ws = wb.active
             ws.title = "گزارش ترب"
 
-            headers = [
+            input_col = input_df.columns.tolist()
+
+            headers = input_col + [
                 "کد کالا",
                 "نام کالا",
                 "نام در ترب",
@@ -385,7 +387,7 @@ class TorobScraperApp(ctk.CTk):
                     browser = p.chromium.launch(
                         headless=is_headless, args=launch_args, channel="msedge"
                     )
-                except Exception:
+                except Exception:  # noqa: BLE001
                     browser = p.chromium.launch(headless=is_headless, args=launch_args)
 
                 context = browser.new_context(
@@ -407,11 +409,17 @@ class TorobScraperApp(ctk.CTk):
                     if self.stop_requested:
                         break
 
-                    product_code = row.get("کد", "-")
                     product_name = str(row.get("نام", "")).strip()
 
                     if not product_name or pd.isna(product_name):
                         continue
+
+                    input_values = []
+                    for col in input_col:
+                        val = row.get(col, "-")
+                        if pd.isna(val):
+                            val = "-"
+                        input_values.append(val)
 
                     current_fill = fill_cream if use_cream else fill_white
                     use_cream = not use_cream
@@ -505,9 +513,7 @@ class TorobScraperApp(ctk.CTk):
                                 )
                                 link = seller.get("page_url") or "-"
 
-                                row_data = [
-                                    product_code,
-                                    product_name,
+                                row_data = input_values + [
                                     torob_title,
                                     shop_name,
                                     score_and_history,
@@ -522,22 +528,30 @@ class TorobScraperApp(ctk.CTk):
                                 for cell in ws[ws.max_row]:
                                     cell.fill = current_fill
 
-                                json_export_list.append(
-                                    {
-                                        "product_code": product_code,
-                                        "product_name": product_name,
-                                        "torob_title": torob_title,
-                                        "shop_name": shop_name,
-                                        "score_and_history": score_and_history,
-                                        "torob_guarantee": torob_guarantee,
-                                        "price": price,
-                                        "price_change": price_change,
-                                        "link": link,
-                                        "image_url": image_url,
-                                        "prk": prk,
-                                        "raw_seller_data": seller,
-                                    }
-                                )
+                                json_export_dict1 = {
+                                    "torob_title": torob_title,
+                                    "shop_name": shop_name,
+                                    "score_and_history": score_and_history,
+                                    "torob_guarantee": torob_guarantee,
+                                    "price": price,
+                                    "price_change": price_change,
+                                    "link": link,
+                                    "image_url": image_url,
+                                    "prk": prk,
+                                    "raw_seller_data": seller,
+                                }
+
+                                json_export_dict2 = {}
+
+                                for col, val in (input_col, input_values):
+                                    json_export_dict2[col] = val
+
+                                json_export_dict2 = {
+                                    **json_export_dict2,
+                                    **json_export_dict1,
+                                }
+
+                                json_export_list.append(json_export_dict2)
 
                     self.log(f"✅ موفق: {product_name}")
 
@@ -612,7 +626,7 @@ class TorobScraperApp(ctk.CTk):
                                         f"⚠️ دکمه نمودار قیمت برای {product_name} یافت نشد."
                                     )
 
-                            except Exception as err:
+                            except Exception as err:  # noqa: BLE001
                                 self.log(f"❌ خطا در اسکرین‌شات {product_name}: {err}")
 
                             time.sleep(1.5)
@@ -658,7 +672,7 @@ class TorobScraperApp(ctk.CTk):
                     f"استخراج کامل شد.\n\nاکسل: {excel_filename}\nجیسون: {json_filename}",
                 )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self.log(f"\n❌ خطا: {e}")
             messagebox.showerror("خطا", f"خطایی رخ داد: {e}")
 
