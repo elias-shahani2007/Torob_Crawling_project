@@ -1,6 +1,7 @@
 import json
 import os
 import random
+import re
 import sys
 import threading
 import time
@@ -255,6 +256,16 @@ class TorobScraperApp(ctk.CTk):
 
         return res.get("data") if res else None
 
+    def price_data_cleaner(self, raw_price):
+        if not raw_price or raw_price == "-":
+            return None, "نامشخص"
+        price_number_str = raw_price.replace(",", "").replace("،", "").replace("٫", "")
+        status = "نا موجود" if "نا موجود" in raw_price else "موجود"
+        price_number = re.findall(r"\d+", price_number_str)
+        if price_number:
+            return int(price_number[0]), status
+        return None, status
+
     def wait_for_unblock(self):
         self.log("⏳ صبر یک ساعته به دلیل احتمال مسدودیت ترب...")
         elapsed = 0
@@ -341,12 +352,11 @@ class TorobScraperApp(ctk.CTk):
             input_col = input_df.columns.tolist()
 
             headers = input_col + [
-                "کد کالا",
-                "نام کالا",
                 "نام در ترب",
                 "فروشگاه",
                 "امتیاز و سابقه",
                 "ضمانت ترب",
+                "وضعیت موجودی",
                 "قیمت",
                 "تغییر قیمت",
                 "لینک",
@@ -506,11 +516,16 @@ class TorobScraperApp(ctk.CTk):
                                 price_change = (
                                     seller.get("last_price_change_date") or "-"
                                 )
-                                price = (
+                                price_text = (
                                     seller.get("price_text")
                                     or seller.get("price_string")
                                     or "-"
                                 )
+
+                                clean_price_data, product_status = (
+                                    self.price_data_cleaner(price_text)
+                                )
+
                                 link = seller.get("page_url") or "-"
 
                                 row_data = input_values + [
@@ -518,7 +533,8 @@ class TorobScraperApp(ctk.CTk):
                                     shop_name,
                                     score_and_history,
                                     torob_guarantee,
-                                    price,
+                                    product_status,
+                                    clean_price_data,
                                     price_change,
                                     link,
                                     image_url,
@@ -533,7 +549,8 @@ class TorobScraperApp(ctk.CTk):
                                     "shop_name": shop_name,
                                     "score_and_history": score_and_history,
                                     "torob_guarantee": torob_guarantee,
-                                    "price": price,
+                                    "availability": product_status,
+                                    "price": clean_price_data,
                                     "price_change": price_change,
                                     "link": link,
                                     "image_url": image_url,
@@ -543,7 +560,7 @@ class TorobScraperApp(ctk.CTk):
 
                                 json_export_dict2 = {}
 
-                                for col, val in (input_col, input_values):
+                                for col, val in zip(input_col, input_values):
                                     json_export_dict2[col] = val
 
                                 json_export_dict2 = {
