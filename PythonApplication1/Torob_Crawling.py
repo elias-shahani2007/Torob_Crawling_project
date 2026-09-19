@@ -260,11 +260,52 @@ class TorobScraperApp(ctk.CTk):
         if not raw_price or raw_price == "-":
             return None, "نامشخص"
         price_number_str = raw_price.replace(",", "").replace("،", "").replace("٫", "")
-        status = "نا موجود" if "نا موجود" in raw_price else "موجود"
+        status = "ناموجود" if "ناموجود" in raw_price else "موجود"
         price_number = re.findall(r"\d+", price_number_str)
         if price_number:
             return int(price_number[0]), status
         return None, status
+
+    def cpt_data_cleaner(self, raw_cpt):
+        """
+        this function cleans cpt data(cpt = change price time)
+        """
+        if not raw_cpt or raw_cpt == "-":
+            return "", ""
+
+        if "دیروز" in raw_cpt:
+            return 1, "روز"
+        elif "پریروز" in raw_cpt:
+            return 2, "روز"
+        elif "لحظاتی" in raw_cpt or "دقایقی" in raw_cpt:
+            return 0, "دقیقه"
+
+        matches = re.findall(r"(\d+)\s*(سال|ماه|هفته|روز|ساعت|دقیقه|ثانیه)", raw_cpt)
+        if not matches:
+            return "", ""
+
+        if len(matches) == 1:
+            time_value, time_unit = matches[0]
+            return int(time_value), time_unit
+        elif len(matches) == 2:
+            unit_data = {
+                "سال": 365 * 24 * 60,
+                "ماه": 30 * 24 * 60,
+                "هفته": 7 * 24 * 60,
+                "روز": 24 * 60,
+                "ساعت": 60,
+                "دقیقه": 1,
+                "ثانیه": 1 / 60,
+            }
+            time_value1, time_unit1 = matches[0]
+            time_value2, time_unit2 = matches[1]
+            time_value1, time_value2 = int(time_value1), int(time_value2)
+
+            total_minute = time_value1 * unit_data.get(
+                time_unit1, 0
+            ) + time_value2 * unit_data.get(time_unit2, 0)
+            minute2unit2 = total_minute / unit_data.get(time_unit2, 1)
+            return minute2unit2, time_unit2
 
     def wait_for_unblock(self):
         self.log("⏳ صبر یک ساعته به دلیل احتمال مسدودیت ترب...")
@@ -349,7 +390,10 @@ class TorobScraperApp(ctk.CTk):
             ws = wb.active
             ws.title = "گزارش ترب"
 
-            input_col = input_df.columns.tolist()
+            if mode == "استخراج از فایل اکسل":
+                input_col = input_df.columns.tolist()
+            else:
+                input_col = ["کد", "نام"]
 
             headers = input_col + [
                 "نام در ترب",
@@ -358,7 +402,8 @@ class TorobScraperApp(ctk.CTk):
                 "ضمانت ترب",
                 "وضعیت موجودی",
                 "قیمت",
-                "تغییر قیمت",
+                "مقدار زمان تغییر قیمت",
+                "واحد زمان تغییر قیمت",
                 "لینک",
                 "عکس",
             ]
@@ -516,6 +561,11 @@ class TorobScraperApp(ctk.CTk):
                                 price_change = (
                                     seller.get("last_price_change_date") or "-"
                                 )
+
+                                clean_cpt_data, cpt_unit = self.cpt_data_cleaner(
+                                    price_change
+                                )
+
                                 price_text = (
                                     seller.get("price_text")
                                     or seller.get("price_string")
@@ -535,7 +585,8 @@ class TorobScraperApp(ctk.CTk):
                                     torob_guarantee,
                                     product_status,
                                     clean_price_data,
-                                    price_change,
+                                    clean_cpt_data,
+                                    cpt_unit,
                                     link,
                                     image_url,
                                 ]
@@ -551,7 +602,8 @@ class TorobScraperApp(ctk.CTk):
                                     "torob_guarantee": torob_guarantee,
                                     "availability": product_status,
                                     "price": clean_price_data,
-                                    "price_change": price_change,
+                                    "price_change": clean_cpt_data,
+                                    "change_price_time_unit": cpt_unit,
                                     "link": link,
                                     "image_url": image_url,
                                     "prk": prk,

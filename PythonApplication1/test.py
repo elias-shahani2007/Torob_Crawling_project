@@ -1,4 +1,3 @@
-"""
 import unittest as ut
 
 import Torob_Crawling
@@ -7,8 +6,8 @@ import Torob_Crawling
 class TestDivide(ut.TestCase):
     def test_divide(self):
         self.assertEqual(
-            Torob_Crawling.TorobScraperApp.price_data_cleaner("66٫499٫000 تومان"),
-            66499000,
+            Torob_Crawling.TorobScraperApp.price_data_cleaner("۶۳٫۹۹۰٫۰۰۰ تومان"),
+            (63990000, "موجود"),
         )
 
 
@@ -30,3 +29,4 @@ def price_data_cleaner(raw_price):
 
 
 print(price_data_cleaner("۶۳٫۹۹۰٫۰۰۰ تومان"))
+"""
